@@ -4,6 +4,7 @@ var lat;
 var lng;
 var normalLongitude = true;
 var postiveEast = true;
+var planetocentric = true;
 
 
 console.log(testLayer);
@@ -30,14 +31,12 @@ console.log(testLayer);
         crs: L.CRS.EPSG4326
     });
 
-
-
-
     var layers = {
       'base': [],
       'overlays': [],
       'wfs': []
     };
+    
 
     var targets = myJSONmaps['targets'];
     for(var i = 0; i < targets.length; i++) {
@@ -51,7 +50,7 @@ console.log(testLayer);
 
           if(currentLayer['type'] == 'WMS') {
             // Base layer check
-            if(currentLayer['transparent'] == 'false') {
+            if(currentLayer["transparent"] == 'false') {
               layers['base'].push(currentLayer);
             }
             else {
@@ -84,12 +83,14 @@ console.log(testLayer);
 
     var overlays = {};
     for(var i = 0; i < layers['overlays'].length; i++) {
-        layer = layers['overlays'][i];
-        if(layer['projection'] == 'cylindrical') {
+        layer = layers["overlays"][i];
+        if(layer["projection"] == 'cylindrical' && layer["transparent"] == "true") {
             var overlay = L.tileLayer.wms(String(layer['url']) + 
                     '?map=' + String(layer['map']), 
                 {
-                    layers: String(layer["layer"])
+                    layers: String(layer["layer"]),
+                    transparent: true,
+                    format: 'image/png'
                 });
             var name = String(layer["displayname"]);
             overlays[name] = overlay;
@@ -120,9 +121,6 @@ console.log(testLayer);
 
     }).addTo(map);*/
 
-    
-    
-
 
 
 
@@ -144,6 +142,10 @@ console.log(testLayer);
             northPoleProjection.src = "./images/north-pole-hot.png"
             southPoleProjection.src = "./images/south-pole.png"
             cylindricalProjection.src = "./images/cylindrical.png"
+            
+            L.control.layers(baseMaps, overlays).removeFrom(map);
+            map.options.crs = northStere;
+        
         }
         else if (titleName == southPoleProjection.title)
         {
@@ -185,7 +187,6 @@ console.log(testLayer);
         if( formValue == "180")
         {
             normalLongitude = false;
-            console.log("Not Implemented 180");
         }
         else if (formValue == "360")
         {
@@ -199,14 +200,16 @@ console.log(testLayer);
     var latitudeTypeForm =  document.getElementById("consoleLatTypeSelect");
     latitudeTypeForm.onchange = function(){latitudeTypeSwitcher( latitudeTypeForm.value)};
 
-    function latitudeTypeSwitcher (formValue)
+    function latitudeTypeSwitcher(formValue)
     {
         if( formValue == "Planetographic")
         {
+            planetocentric = false;
             console.log("Not Implemented Planetographic");
         }
         else if (formValue == "Planetocentric")
         {
+            planetocentric = true;
             console.log("Not Implemented Planetocentric");
         }
     }
@@ -259,6 +262,11 @@ map.addEventListener('mousemove', function(e)
       {
           lng *= -1;
       }
+  }
+
+  if(!planetocentric)
+  {
+    // implement ocentric method
   }
 
   latitudeTypeForm.innerHTML = "Lat Lon: "+ 
