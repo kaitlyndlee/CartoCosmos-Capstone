@@ -5,9 +5,16 @@ var lng;
 var normalLongitude = true;
 var postiveEast = true;
 var planetocentric = true;
-
-
-console.log(testLayer);
+var layers = {
+  'base': [],
+  'overlays': [],
+  'wfs': []
+};
+var map;
+var projName;
+var mouseControl;
+var scaleControl;
+var layerSwitcherControl;
 
     // Create new projection with Proj4Leaflet
     var northStere = new L.Proj.CRS('EPSG:32661', '+proj=stere +lat_0=90 +lon_0=0' +
@@ -24,80 +31,56 @@ console.log(testLayer);
       origin: [0, 0]    // This could be causing problems?
     });
 
-
-    var map = L.map('map', { 
-        center: [90, 0],     //Leaflet uses lat lon order
+    map = L.map('map', { 
+        center: [90, 0],     // Leaflet uses lat lon order
         zoom: 2,
         crs: L.CRS.EPSG4326
     });
+    createMap("cylindrical")
 
-    var layers = {
-      'base': [],
-      'overlays': [],
-      'wfs': []
-    };
-    
 
-    var targets = myJSONmaps['targets'];
-    for(var i = 0; i < targets.length; i++) {
-      var currentTarget = targets[i];
-
-      if (currentTarget['name'].toLowerCase() == 'mars') {
-
-        var jsonLayers = currentTarget['webmap'];
-        for(var j = 0; j < jsonLayers.length; j++) {
-          var currentLayer = jsonLayers[j];
-
-          if(currentLayer['type'] == 'WMS') {
-            // Base layer check
-            if(currentLayer["transparent"] == 'false') {
-              layers['base'].push(currentLayer);
-            }
-            else {
-              layers['overlays'].push(currentLayer);
-            }
-          }  
-          else { 
-            layers['wfs'].push(currentLayer);
-          }  
+    function createMap(projName) 
+    {
+        var projection;
+        if(projName == "north-polar stereographic")
+        {
+            projection = northStere;
         }
-      }  
-    }
+        // else if(projName == "south-polar stereographic")
+        // {
+        //     projection = southStere;
+        // }
+        else
+        {
+            projection = L.CRS.EPSG4326;
+        }
 
-    var baseMaps = {};
-    for(var i = 0; i < layers['base'].length; i++) {
-        var layer = layers['base'][i];
-        if(layer['projection'] == 'cylindrical') {
-            var baseLayer = L.tileLayer.wms(String(layer['url']) + 
-                    '?map=' + String(layer['map']), 
-                {
-                    layers: String(layer["layer"]),
-                });
-            var name = String(layer["displayname"]);
-            baseMaps[name] = baseLayer;
-            if(layer['primary'] == "true") {
-              baseLayer.addTo(map);
+        parseJSON(projName);
+
+        map.options.crs = projection;
+
+        scaleControl = L.control.scale({
+            imperial: false
+        });
+        scaleControl.addTo(map);
+
+        mouseControl = L.control.mousePosition({
+            position: "bottomright",
+            numDigits: 2,
+            prefix: "Lat Lon: ",
+            // Add checks for different lat/lon selections
+            lngFormatter: function(lon) {
+                return L.Util.formatNum(lon, 2);
+            },
+            latFormatter: function(lat) {
+                return L.Util.formatNum(lat, 2);
             }
-        }   
-    }
-
-    var overlays = {};
-    for(var i = 0; i < layers['overlays'].length; i++) {
-        layer = layers["overlays"][i];
-        if(layer["projection"] == 'cylindrical' && layer["transparent"] == "true") {
-            var overlay = L.tileLayer.wms(String(layer['url']) + 
-                    '?map=' + String(layer['map']), 
-                {
-                    layers: String(layer["layer"]),
-                    transparent: true,
-                    format: 'image/png'
-                });
-            var name = String(layer["displayname"]);
-            overlays[name] = overlay;
-        }   
-    }
-
-    L.control.layers(baseMaps, overlays).addTo(map);
+        });
+        mouseControl.addTo(map);
+        var mouseHTML = mouseControl.getContainer();
+        var latitudeTypeForm =  document.getElementById("latLng");
+        latitudeTypeForm.appendChild(mouseHTML);
+     }
 
     // L.control.coordinates({
     //     // position:"bottomleft", //optional default "bootomright"
@@ -109,19 +92,6 @@ console.log(testLayer);
     //     // useDMS:false, //optional default false
     //     useLatLngOrder: true, //ordering of labels, default false-> lng-lat
     // }).addTo(map);
-
-
-    L.control.scale({
-        imperial: false
-    }).addTo(map);
-
-   /* L.control.mousePosition({
-        position: "bottomright",
-        numDigits: 2
-
-    }).addTo(map);*/
-
-
 
 
     // button functions!
@@ -137,139 +107,228 @@ console.log(testLayer);
 
     function projectionSwitcher( titleName)
     {
+        removeControls();
         if(titleName == northPoleProjection.title)
         {
             northPoleProjection.src = "./images/north-pole-hot.png"
             southPoleProjection.src = "./images/south-pole.png"
             cylindricalProjection.src = "./images/cylindrical.png"
             
-            L.control.layers(baseMaps, overlays).removeFrom(map);
-            map.options.crs = northStere;
-        
+            map.eachLayer(function(layer) {
+                map.removeLayer(layer);
+            });
+            removeControls();
+            createMap("north-polar stereographic");
+
         }
         else if (titleName == southPoleProjection.title)
         {
             northPoleProjection.src = "./images/north-pole.png"
             southPoleProjection.src = "./images/south-pole-hot.png"
             cylindricalProjection.src = "./images/cylindrical.png"
+
+            map.eachLayer(function(layer) {
+                map.removeLayer(layer);
+            });
+            removeControls();
+            createMap("south-polar stereographic");
         }
         else if (titleName == cylindricalProjection.title)
         {
             northPoleProjection.src = "./images/north-pole.png"
             southPoleProjection.src = "./images/south-pole.png"
             cylindricalProjection.src = "./images/cylindrical-hot.png"
+
+            map.eachLayer(function(layer) {
+                map.removeLayer(layer);
+            });
+            removeControls();
+            createMap("cylindrical");
         }
     }
 
-    // Postive East and Postive West Lon Lat switchers
-    var directionForm =  document.getElementById("consoleLonDirSelect");
-    directionForm.onchange = function(){latitudeSwithcer( directionForm.value)};
+    function parseJSON(projName)
+    {        
+        var targets = myJSONmaps['targets'];
+        for(var i = 0; i < targets.length; i++) {
+          var currentTarget = targets[i];
 
-    function latitudeSwithcer( formValue)
+          if (currentTarget['name'].toLowerCase() == 'mars') {
+
+            var jsonLayers = currentTarget['webmap'];
+            for(var j = 0; j < jsonLayers.length; j++) {
+              var currentLayer = jsonLayers[j];
+
+              if(currentLayer['type'] == 'WMS') {
+                // Base layer check
+                if(currentLayer["transparent"] == 'false') {
+                  layers['base'].push(currentLayer);
+                }
+                else {
+                  layers['overlays'].push(currentLayer);
+                }
+              }  
+              else { 
+                layers['wfs'].push(currentLayer);
+              }  
+            }
+          }  
+        }
+
+        var baseMaps = {};
+        for(var i = 0; i < layers['base'].length; i++) {
+            var layer = layers['base'][i];
+            if(layer['projection'] == projName) {
+                var baseLayer = L.tileLayer.wms(String(layer['url']) + 
+                        '?map=' + String(layer['map']), 
+                    {
+                        layers: String(layer["layer"]),
+                    });
+                var name = String(layer["displayname"]);
+                baseMaps[name] = baseLayer;
+                if(layer['primary'] == "true") {
+                  baseLayer.addTo(map);
+                }
+            }   
+        }
+
+        var overlays = {};
+        for(var i = 0; i < layers['overlays'].length; i++) {
+            layer = layers["overlays"][i];
+            if(layer["projection"] == projName && layer["transparent"] == "true") {
+                var overlay = L.tileLayer.wms(String(layer['url']) + 
+                        '?map=' + String(layer['map']), 
+                    {
+                        layers: String(layer["layer"]),
+                        transparent: true,
+                        format: 'image/png'
+                    });
+                var name = String(layer["displayname"]);
+                overlays[name] = overlay;
+            }   
+        }
+
+        layerSwitcherControl = L.control.layers(baseMaps, overlays);
+        layerSwitcherControl.addTo(map);
+    }
+
+
+    function removeControls()
     {
-        if (formValue == "PositiveWest")
-        {
-            postiveEast = false;
-        }
-        else if (formValue == "PositiveEast")
-        {
-            postiveEast = true;
-        }
+        map.removeControl(layerSwitcherControl);
+        map.removeControl(mouseControl);
+        map.removeControl(scaleControl);
     }
 
-    // Longitude Degree swithcers 0 to 360, -180 to 180
-    var longitudeForm =  document.getElementById("consoleLonDomSelect");
-    longitudeForm.onchange = function(){longitudeSwitcher( longitudeForm.value)};
+    // // Postive East and Postive West Lon Lat switchers
+    // var directionForm =  document.getElementById("consoleLonDirSelect");
+    // directionForm.onchange = function(){latitudeSwithcer( directionForm.value)};
 
-    // changes normalLongitude from true to false. If its 0 to 360 it will be true.
-    function longitudeSwitcher (formValue)
-    {
-        if( formValue == "180")
-        {
-            normalLongitude = false;
-        }
-        else if (formValue == "360")
-        {
-            normalLongitude = true;
-        }
-    }
+    // function latitudeSwithcer( formValue)
+    // {
+    //     if (formValue == "PositiveWest")
+    //     {
+    //         postiveEast = false;
+    //     }
+    //     else if (formValue == "PositiveEast")
+    //     {
+    //         postiveEast = true;
+    //     }
+    // }
+
+//     // Longitude Degree swithcers 0 to 360, -180 to 180
+//     var longitudeForm =  document.getElementById("consoleLonDomSelect");
+//     longitudeForm.onchange = function(){longitudeSwitcher( longitudeForm.value)};
+
+//     // changes normalLongitude from true to false. If its 0 to 360 it will be true.
+//     function longitudeSwitcher (formValue)
+//     {
+//         if( formValue == "180")
+//         {
+//             normalLongitude = false;
+//         }
+//         else if (formValue == "360")
+//         {
+//             normalLongitude = true;
+//         }
+//     }
 
 
     
-    // Console Lat Type Switchers. AKA planetocentric and PlanetOgrpahic
-    var latitudeTypeForm =  document.getElementById("consoleLatTypeSelect");
-    latitudeTypeForm.onchange = function(){latitudeTypeSwitcher( latitudeTypeForm.value)};
+//     // Console Lat Type Switchers. AKA planetocentric and PlanetOgrpahic
+//     var latitudeTypeForm =  document.getElementById("consoleLatTypeSelect");
+//     latitudeTypeForm.onchange = function(){latitudeTypeSwitcher( latitudeTypeForm.value)};
 
-    function latitudeTypeSwitcher(formValue)
-    {
-        if( formValue == "Planetographic")
-        {
-            planetocentric = false;
-            console.log("Not Implemented Planetographic");
-        }
-        else if (formValue == "Planetocentric")
-        {
-            planetocentric = true;
-            console.log("Not Implemented Planetocentric");
-        }
-    }
+//     function latitudeTypeSwitcher(formValue)
+//     {
+//         if( formValue == "Planetographic")
+//         {
+//             planetocentric = false;
+//             console.log("Not Implemented Planetographic");
+//         }
+//         else if (formValue == "Planetocentric")
+//         {
+//             planetocentric = true;
+//             console.log("Not Implemented Planetocentric");
+//         }
+//     }
 
-var latitudeTypeForm =  document.getElementById("latLng");
-var cords;
+// var latitudeTypeForm =  document.getElementById("latLng");
+// var cords;
 
-map.addEventListener('mousemove', function(e)
-{
-  lat = e.latlng.lat;
-  lng = e.latlng.lng;
+// map.addEventListener('mousemove', function(e)
+// {
+//   lat = e.latlng.lat;
+//   lng = e.latlng.lng;
 
-  if (normalLongitude)
-  {
-      lng = Math.abs(lng) % 360;
-  }
-  else
-  {
-    if (lng < 0)
-    {
-        if (Math.floor(lng/180)%2 == 0)
-        {
-            lng = lng % 180
-        }
-        else
-        {
-            lng = Math.abs(lng) % 180;
-        }
-    }
-    else 
-    {
-        if (Math.floor(lng/180)%2 == 0)
-        {
-            lng = lng % 180
-        }
-        else
-        {
-            lng = (Math.abs(lng) % 180) * -1;
-        }
-    }
-  }
+//   if (normalLongitude)
+//   {
+//       lng = Math.abs(lng) % 360;
+//   }
+//   else
+//   {
+//     if (lng < 0)
+//     {
+//         if (Math.floor(lng/180)%2 == 0)
+//         {
+//             lng = lng % 180
+//         }
+//         else
+//         {
+//             lng = Math.abs(lng) % 180;
+//         }
+//     }
+//     else 
+//     {
+//         if (Math.floor(lng/180)%2 == 0)
+//         {
+//             lng = lng % 180
+//         }
+//         else
+//         {
+//             lng = (Math.abs(lng) % 180) * -1;
+//         }
+//     }
+//   }
   
-  if(!postiveEast)
-  {
-      if(normalLongitude)
-      {
-        lng = Math.abs(lng - 360);
-      }
-      else
-      {
-          lng *= -1;
-      }
-  }
+//   if(!postiveEast)
+//   {
+//       if(normalLongitude)
+//       {
+//         lng = Math.abs(lng - 360);
+//       }
+//       else
+//       {
+//           lng *= -1;
+//       }
+//   }
 
-  if(!planetocentric)
-  {
-    // implement ocentric method
-  }
+//   if(!planetocentric)
+//   {
+//     // implement ocentric method
+//   }
 
-  latitudeTypeForm.innerHTML = "Lat Lon: "+ 
-            lat.toFixed(2) +", " + lng.toFixed(2);
-});
+//   latitudeTypeForm.innerHTML = "Lat Lon: "+ 
+//             lat.toFixed(2) +", " + lng.toFixed(2);
+// });
 
