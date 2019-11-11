@@ -1,5 +1,11 @@
 var testLayer = myJSONmaps['targets'][8]["webmap"][0];
 var mapDiv = document.getElementById("map");
+var lat;
+var lng;
+var normalLongitude = true;
+var postiveEast = true;
+
+
 console.log(testLayer);
 
     // Create new projection with Proj4Leaflet
@@ -17,11 +23,14 @@ console.log(testLayer);
       origin: [0, 0]    // This could be causing problems?
     });
 
+
     var map = L.map('map', { 
         center: [90, 0],     //Leaflet uses lat lon order
-        zoom: 3, 
+        zoom: 2,
         crs: L.CRS.EPSG4326
     });
+
+
 
 
     var layers = {
@@ -63,7 +72,7 @@ console.log(testLayer);
             var baseLayer = L.tileLayer.wms(String(layer['url']) + 
                     '?map=' + String(layer['map']), 
                 {
-                    layers: String(layer["layer"])
+                    layers: String(layer["layer"]),
                 });
             var name = String(layer["displayname"]);
             baseMaps[name] = baseLayer;
@@ -105,11 +114,11 @@ console.log(testLayer);
         imperial: false
     }).addTo(map);
 
-    L.control.mousePosition({
+   /* L.control.mousePosition({
         position: "bottomright",
         numDigits: 2
 
-    }).addTo(map);
+    }).addTo(map);*/
 
     
     
@@ -158,11 +167,11 @@ console.log(testLayer);
     {
         if (formValue == "PositiveWest")
         {
-            console.log("Not Implemented Positve West");
+            postiveEast = false;
         }
         else if (formValue == "PositiveEast")
         {
-            console.log("Not Implemented Positve East");
+            postiveEast = true;
         }
     }
 
@@ -170,15 +179,17 @@ console.log(testLayer);
     var longitudeForm =  document.getElementById("consoleLonDomSelect");
     longitudeForm.onchange = function(){longitudeSwitcher( longitudeForm.value)};
 
+    // changes normalLongitude from true to false. If its 0 to 360 it will be true.
     function longitudeSwitcher (formValue)
     {
         if( formValue == "180")
         {
+            normalLongitude = false;
             console.log("Not Implemented 180");
         }
         else if (formValue == "360")
         {
-            console.log("Not Implemented 360");
+            normalLongitude = true;
         }
     }
 
@@ -199,3 +210,58 @@ console.log(testLayer);
             console.log("Not Implemented Planetocentric");
         }
     }
+
+var latitudeTypeForm =  document.getElementById("latLng");
+var cords;
+
+map.addEventListener('mousemove', function(e)
+{
+  lat = e.latlng.lat;
+  lng = e.latlng.lng;
+
+  if (normalLongitude)
+  {
+      lng = Math.abs(lng) % 360;
+  }
+  else
+  {
+    if (lng < 0)
+    {
+        if (Math.floor(lng/180)%2 == 0)
+        {
+            lng = lng % 180
+        }
+        else
+        {
+            lng = Math.abs(lng) % 180;
+        }
+    }
+    else 
+    {
+        if (Math.floor(lng/180)%2 == 0)
+        {
+            lng = lng % 180
+        }
+        else
+        {
+            lng = (Math.abs(lng) % 180) * -1;
+        }
+    }
+  }
+  
+  if(!postiveEast)
+  {
+      if(normalLongitude)
+      {
+        lng = Math.abs(lng - 360);
+      }
+      else
+      {
+          lng *= -1;
+      }
+  }
+
+  latitudeTypeForm.innerHTML = "Lat Lon: "+ 
+            lat.toFixed(2) +", " + lng.toFixed(2);
+});
+
