@@ -3,7 +3,7 @@ var mapDiv = document.getElementById("map");
 
 
 
-console.log(testLayer);
+
 
     // Create new projection with Proj4Leaflet
     var northStere = new L.Proj.CRS('EPSG:32661', '+proj=stere +lat_0=90 +lon_0=0' +
@@ -187,7 +187,6 @@ console.log(testLayer);
     // changes normalLongitude from true to false. If its 0 to 360 it will be true.
     function longitudeSwitcher (formValue)
     {
-        console.log(formValue);
         if( formValue == "180")
         {
             normalLongitude = true;
@@ -207,7 +206,6 @@ console.log(testLayer);
 
     function latitudeTypeSwitcher(formValue)
     {
-        console.log(formValue);
         if( formValue == "Planetographic")
         {
             planetocentric = false;
@@ -285,7 +283,6 @@ map.addEventListener('mousemove', function(e)
   if(!planetocentric)
   {
 
-    console.log("working");
     convertedLatitude = Math.radians(lat);
     convertedLatitude = Math.atan(((dMajorRadius / dMinorRadius)**2) * 
                                             (Math.tan(convertedLatitude)));
