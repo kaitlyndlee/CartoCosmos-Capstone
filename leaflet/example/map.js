@@ -1,10 +1,6 @@
 var testLayer = myJSONmaps['targets'][8]["webmap"][0];
 var mapDiv = document.getElementById("map");
-var lat;
-var lng;
-var normalLongitude = true;
-var postiveEast = true;
-var planetocentric = true;
+
 
 
 console.log(testLayer);
@@ -124,6 +120,13 @@ console.log(testLayer);
 
   // coment
 
+  /********************COPY FROM HERE TO END*****************/ */
+    var lat;
+    var lng;
+    var normalLongitude = false;
+    var postiveEast = true;
+    var planetocentric = true;
+
     // button functions!
 
     var northPoleProjection =  document.getElementById("projectionNorthPole");
@@ -184,13 +187,14 @@ console.log(testLayer);
     // changes normalLongitude from true to false. If its 0 to 360 it will be true.
     function longitudeSwitcher (formValue)
     {
+        console.log(formValue);
         if( formValue == "180")
         {
-            normalLongitude = false;
+            normalLongitude = true;
         }
         else if (formValue == "360")
         {
-            normalLongitude = true;
+            normalLongitude = false;
         }
     }
 
@@ -198,45 +202,55 @@ console.log(testLayer);
     
     // Console Lat Type Switchers. AKA planetocentric and PlanetOgrpahic
     var latitudeTypeForm =  document.getElementById("consoleLatTypeSelect");
-    latitudeTypeForm.onchange = function(){latitudeTypeSwitcher( latitudeTypeForm.value)};
+    latitudeTypeForm.onchange = function(){latitudeTypeSwitcher( 
+                document.getElementById("consoleLatTypeSelect").value)};
 
     function latitudeTypeSwitcher(formValue)
     {
+        console.log(formValue);
         if( formValue == "Planetographic")
         {
             planetocentric = false;
-            console.log("Not Implemented Planetographic");
         }
         else if (formValue == "Planetocentric")
         {
             planetocentric = true;
-            console.log("Not Implemented Planetocentric");
         }
     }
 
 var latitudeTypeForm =  document.getElementById("latLng");
 var cords;
+//converts from degrees to radians
+Math.radians = function(degrees) {
+    return degrees * Math.PI / 180;
+  };
+   
+  // Converts from radians to degrees.
+Math.degrees = function(radians) {
+    return radians * 180 / Math.PI;
+};
 
 map.addEventListener('mousemove', function(e)
 {
-  lat = e.latlng.lat;
-  lng = e.latlng.lng;
 
-  if (normalLongitude)
-  {
-      lng = Math.abs(lng) % 360;
-  }
-  else
-  {
+    var convertedLatitude = 0;
+    var dMajorRadius = 3396190.0;
+    var dMinorRadius = 3376200.0;
+
+    lat = e.latlng.lat;
+    lng = e.latlng.lng;
+
+
+
     if (lng < 0)
     {
         if (Math.floor(lng/180)%2 == 0)
         {
-            lng = lng % 180
+            lng = 180 - Math.abs(lng) % 180;
         }
         else
         {
-            lng = Math.abs(lng) % 180;
+            lng = lng % 180;
         }
     }
     else 
@@ -247,26 +261,38 @@ map.addEventListener('mousemove', function(e)
         }
         else
         {
-            lng = (Math.abs(lng) % 180) * -1;
+            lng = -180 + (Math.abs(lng) % 180);
         }
     }
-  }
+
+    if (!normalLongitude)
+    {
+        lng += 180;
+    }
   
   if(!postiveEast)
   {
       if(normalLongitude)
       {
-        lng = Math.abs(lng - 360);
+        lng *= -1;
       }
       else
       {
-          lng *= -1;
+        lng = Math.abs(lng - 360);
       }
   }
 
   if(!planetocentric)
   {
-    // implement ocentric method
+
+    console.log("working");
+    convertedLatitude = Math.radians(lat);
+    convertedLatitude = Math.atan(((dMajorRadius / dMinorRadius)**2) * 
+                                            (Math.tan(convertedLatitude)));
+    convertedLatitude = Math.degrees(convertedLatitude);
+
+    lat = convertedLatitude;
+
   }
 
   latitudeTypeForm.innerHTML = "Lat Lon: "+ 
