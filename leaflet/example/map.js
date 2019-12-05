@@ -19,45 +19,57 @@ var layerSwitcherControl;
     // Create new projection with Proj4Leaflet
     var northStere = new L.Proj.CRS('EPSG:32661', '+proj=stere +lat_0=90 +lon_0=0' +
         '+k=1 +x_0=0 +y_0=0 +a=3396190 +b=3376200 +units=m +no_defs', {
-        // Copied from an example, could be causing problems
         resolutions: [8192, 4096, 2048, 1024, 512, 256, 128],    
-        origin: [0, 0]    // This could be causing problems?
+        origin: [0, 0]
+    });
+
+    var southStere = new L.Proj.CRS('EPSG:32761', '+proj=stere +lat_0=-90 +lon_0=0' + 
+        '+k=1 +x_0=0 +y_0=0 +a=3396190 +b=3376200 +units=m +no_defs', {
+        resolutions: [8192, 4096, 2048, 1024, 512, 256, 128],    
+        origin: [0, 0]
     });
 
     var geodesic = new L.Proj.CRS('EPSG:4326', '+proj=longlat' +
       ' +a=3396190 +b=3376200 +no_defs', {
-      // Copied from an example, could be causing problems
       resolutions: [8192, 4096, 2048, 1024, 512, 256, 128],    
-      origin: [0, 0]    // This could be causing problems?
+      origin: [0, 0] 
     });
 
-    map = L.map('map', { 
-        center: [90, 0],     // Leaflet uses lat lon order
-        zoom: 2,
-        crs: L.CRS.EPSG4326
-    });
+    // Load a cylinrical map by default
     createMap("cylindrical")
 
 
     function createMap(projName) 
     {
+        document.getElementById('MarsMap').innerHTML = "<div id='map'></div>";
+
         var projection;
+        var center;
         if(projName == "north-polar stereographic")
         {
             projection = northStere;
+            center = [90, 0];
         }
-        // else if(projName == "south-polar stereographic")
-        // {
-        //     projection = southStere;
-        // }
+        else if(projName == "south-polar stereographic")
+        {
+            projection = southStere;
+            center = [-90, 0];
+        }
         else
         {
             projection = L.CRS.EPSG4326;
+            center = [0, 0];
         }
 
-        parseJSON(projName);
+        map = L.map('map', { 
+            center: center,     // Leaflet uses lat lon order
+            zoom: 1,
+            maxZoom: 8,
+            crs: projection,
+        });
 
-        map.options.crs = projection;
+        console.log(map);
+        parseJSON(projName);
 
         scaleControl = L.control.scale({
             imperial: false
@@ -95,31 +107,27 @@ var layerSwitcherControl;
 
 
     // button functions!
+    var northPoleProjection = document.getElementById("projectionNorthPole");
+    northPoleProjection.onclick = function(){switchProjection(northPoleProjection.title)};
 
-    var northPoleProjection =  document.getElementById("projectionNorthPole");
-    northPoleProjection.onclick = function(){projectionSwitcher(northPoleProjection.title)};
+    var southPoleProjection = document.getElementById("projectionSouthPole");
+    southPoleProjection.onclick = function(){switchProjection(southPoleProjection.title)};
 
-    var southPoleProjection =  document.getElementById("projectionSouthPole");
-    southPoleProjection.onclick = function(){projectionSwitcher(southPoleProjection.title)};
+    var cylindricalProjection = document.getElementById("projectionCylindrical");
+    cylindricalProjection.onclick = function(){switchProjection(cylindricalProjection.title)};
 
-    var cylindricalProjection =  document.getElementById("projectionCylindrical");
-    cylindricalProjection.onclick = function(){projectionSwitcher(cylindricalProjection.title)};
+    function switchProjection(titleName)
+    {   
+        // Refresh mouse control
+        map.removeControl(mouseControl);
 
-    function projectionSwitcher( titleName)
-    {
-        removeControls();
         if(titleName == northPoleProjection.title)
         {
             northPoleProjection.src = "./images/north-pole-hot.png"
             southPoleProjection.src = "./images/south-pole.png"
             cylindricalProjection.src = "./images/cylindrical.png"
             
-            map.eachLayer(function(layer) {
-                map.removeLayer(layer);
-            });
-            removeControls();
             createMap("north-polar stereographic");
-
         }
         else if (titleName == southPoleProjection.title)
         {
@@ -127,10 +135,6 @@ var layerSwitcherControl;
             southPoleProjection.src = "./images/south-pole-hot.png"
             cylindricalProjection.src = "./images/cylindrical.png"
 
-            map.eachLayer(function(layer) {
-                map.removeLayer(layer);
-            });
-            removeControls();
             createMap("south-polar stereographic");
         }
         else if (titleName == cylindricalProjection.title)
@@ -139,16 +143,16 @@ var layerSwitcherControl;
             southPoleProjection.src = "./images/south-pole.png"
             cylindricalProjection.src = "./images/cylindrical-hot.png"
 
-            map.eachLayer(function(layer) {
-                map.removeLayer(layer);
-            });
-            removeControls();
             createMap("cylindrical");
         }
     }
 
     function parseJSON(projName)
-    {        
+    {   
+        var corner1 = L.latLng(-90, -180);
+        var corner2 = L.latLng(90, 180);
+        var bounds = L.latLngBounds(corner1, corner2);
+
         var targets = myJSONmaps['targets'];
         for(var i = 0; i < targets.length; i++) {
           var currentTarget = targets[i];
@@ -183,6 +187,8 @@ var layerSwitcherControl;
                         '?map=' + String(layer['map']), 
                     {
                         layers: String(layer["layer"]),
+                        // bounds: bounds,
+                        // noWrap: true
                     });
                 var name = String(layer["displayname"]);
                 baseMaps[name] = baseLayer;
@@ -201,23 +207,18 @@ var layerSwitcherControl;
                     {
                         layers: String(layer["layer"]),
                         transparent: true,
-                        format: 'image/png'
+                        format: 'image/png',
+                        // bounds: bounds,
+                        // nowrap: true
                     });
                 var name = String(layer["displayname"]);
                 overlays[name] = overlay;
             }   
         }
 
+
         layerSwitcherControl = L.control.layers(baseMaps, overlays);
         layerSwitcherControl.addTo(map);
-    }
-
-
-    function removeControls()
-    {
-        map.removeControl(layerSwitcherControl);
-        map.removeControl(mouseControl);
-        map.removeControl(scaleControl);
     }
 
     // // Postive East and Postive West Lon Lat switchers
