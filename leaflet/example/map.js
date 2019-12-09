@@ -59,6 +59,7 @@ function createMap(projName)
     else
     {
         projection = L.CRS.EPSG4326;
+        // projection = geodesic;
         center = [0, 0];
     }
 
@@ -339,6 +340,9 @@ function latLonSwitcher(event)
     lat = event.latlng.lat;
     lng = event.latlng.lng;
 
+    lat = L.Util.wrapNum(lat, [-180.0, 180.0]);
+    lng = L.Util.wrapNum(lng, [-180.0, 180.0]);
+
     // if (lng < 0)
     // {
     //     if (Math.floor(lng/180)%2 == 0)
@@ -361,9 +365,7 @@ function latLonSwitcher(event)
     //         lng = -180 + (Math.abs(lng) % 180);
     //     }
     // }
-    // if(proj == "cylindrical") {
-    //         lng -= 180;
-    // }
+
     if (!lonTo180)
     {
         if(proj == "cylindrical") {
@@ -376,7 +378,7 @@ function latLonSwitcher(event)
   
   if(!postiveEast)
   {
-      if(normalLongitude)
+      if(lonTo180)
       {
         lng *= -1;
       }
